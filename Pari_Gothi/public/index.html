@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AUCTIONEX // Real-Time Live Auction & Bidding Floor</title>
+  <meta name="description" content="High-frequency authoritative real-time live auction and bidding engine built with Node.js and Socket.io.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Global Alerts Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Outbid High-Priority Banner -->
+  <div id="outbid-alert-banner" class="outbid-alert-banner hidden">
+    <div class="outbid-content">
+      <span class="outbid-icon">⚠️</span>
+      <div class="outbid-text">
+        <strong id="outbid-title">OUTBID ALERT!</strong>
+        <p id="outbid-message">You have been outbid on this lot.</p>
+      </div>
+    </div>
+    <button id="quick-counter-bid-btn" class="quick-counter-btn">COUNTER BID NOW</button>
+  </div>
+
+  <!-- Main Trading App Container -->
+  <div class="trading-floor-app">
+    
+    <!-- Top Bar Navigation & Floor Status -->
+    <header class="floor-header">
+      <div class="header-left">
+        <div class="brand-logo">
+          <span class="brand-glyph">⚡</span>
+          <div class="brand-text">
+            <h1>AUCTION<span>EX</span></h1>
+            <span class="sub-label">LIVE TRADING ENGINE</span>
+          </div>
+        </div>
+        <div class="live-indicator">
+          <span class="pulse-dot"></span>
+          <span class="live-label">FLOOR ACTIVE</span>
+        </div>
+      </div>
+
+      <!-- Center: Room Switcher -->
+      <div class="header-center">
+        <div class="room-selector-wrapper">
+          <label for="room-select" class="selector-label">AUCTION LOT:</label>
+          <select id="room-select" class="room-dropdown">
+            <option value="AUC_VINTAGE_99" selected>Lot #99: 1967 Fender Stratocaster</option>
+            <option value="AUC_ROLEX_01">Lot #01: 1961 Rolex Submariner</option>
+            <option value="AUC_CHARIZARD_99">Lot #07: 1999 1st Ed Charizard Holo</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Right: Identity & Audience Stats -->
+      <div class="header-right">
+        <div class="stat-pill audience-pill" title="Live Room Viewers">
+          <span class="stat-icon">👥</span>
+          <span class="stat-number" id="viewer-count">1</span>
+          <span class="stat-tag">VIEWERS</span>
+        </div>
+
+        <div class="user-profile-badge" id="user-profile-card">
+          <div class="user-avatar" id="user-avatar">V</div>
+          <div class="user-info">
+            <span class="user-title">BIDDER IDENTITY</span>
+            <span class="user-handle" id="current-username-display">Vikram</span>
+          </div>
+          <button id="change-user-btn" class="change-user-btn" title="Change bidder name">Change</button>
+        </div>
+
+        <button id="reset-auction-btn" class="action-btn-secondary" title="Reset current auction countdown & bids for demo">
+          ↺ Reset Demo
+        </button>
+      </div>
+    </header>
+
+    <!-- Main 3-Column Trading Floor Grid -->
+    <main class="trading-grid">
+      
+      <!-- COLUMN 1: Lot Catalog & Provenance -->
+      <section class="grid-col col-item-details card-glass">
+        <div class="col-header">
+          <span class="col-badge" id="item-category">Musical Instruments</span>
+          <span class="col-lot-id" id="item-lot-id">LOT #AUC_VINTAGE_99</span>
+        </div>
+
+        <div class="item-visual-container">
+          <img id="item-image" src="/images/stratocaster.png" alt="Auction Lot Photograph" class="item-hero-img">
+          <div class="image-reflection"></div>
+          <div class="provenance-tag">
+            <span class="provenance-icon">✓</span> Certified Authentic
+          </div>
+        </div>
+
+        <div class="item-meta">
+          <h2 id="item-title" class="item-title">1967 Vintage Fender Stratocaster</h2>
+          <p id="item-description" class="item-description">
+            Original condition rare electric guitar with sunburst lacquer finish, original pickups and hard-shell case.
+          </p>
+        </div>
+
+        <div class="item-valuation-box">
+          <div class="val-item">
+            <span class="val-label">STARTING PRICE</span>
+            <span class="val-value" id="item-starting-price">₹50,000</span>
+          </div>
+          <div class="val-divider"></div>
+          <div class="val-item">
+            <span class="val-label">MIN INCREMENT</span>
+            <span class="val-value text-accent" id="item-min-increment">₹2,000</span>
+          </div>
+          <div class="val-divider"></div>
+          <div class="val-item">
+            <span class="val-label">LOT STATUS</span>
+            <span class="val-value status-tag-active" id="item-status-badge">ACTIVE</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUMN 2: Live Bidding Stage (Center Stage) -->
+      <section class="grid-col col-bidding-stage card-glass">
+        
+        <!-- Top Status & Timer -->
+        <div class="stage-timer-banner" id="timer-banner-container">
+          <div class="timer-label-box">
+            <span class="clock-icon">⏱</span>
+            <span class="clock-title">CLOSING COUNTDOWN</span>
+            <span class="anti-snipe-badge hidden" id="anti-snipe-indicator">⚡ ANTI-SNIPE ACTIVE</span>
+          </div>
+          <div class="digital-clock" id="clock-display">
+            <span id="timer-seconds" class="timer-digits">60</span><span class="timer-unit">s</span>
+          </div>
+        </div>
+
+        <!-- Price Board -->
+        <div class="current-price-board" id="price-board">
+          <div class="price-header-row">
+            <span class="price-board-label">CURRENT LEADING BID</span>
+            <span id="bid-status-pill" class="badge-status-neutral">OPEN FOR BIDS</span>
+          </div>
+          <div class="price-main-display">
+            <span class="currency-symbol">₹</span>
+            <span id="current-bid-display" class="price-amount">50,000</span>
+          </div>
+          <div class="highest-bidder-bar">
+            <span class="bidder-lead-label">HIGHEST BIDDER:</span>
+            <span id="highest-bidder-display" class="bidder-lead-name">None (Opening Floor)</span>
+            <span id="is-you-badge" class="badge-you hidden">YOU ARE LEADING</span>
+          </div>
+        </div>
+
+        <!-- Sold State Overlay (Shown on auction:sold) -->
+        <div id="sold-card-overlay" class="sold-overlay hidden">
+          <div class="sold-modal">
+            <div class="sold-gavel-icon">🔨</div>
+            <h3 class="sold-title">AUCTION CONCLUDED</h3>
+            <div class="sold-price-row">
+              <span class="sold-label">HAMMER PRICE:</span>
+              <span class="sold-amount" id="sold-final-price">₹50,000</span>
+            </div>
+            <div class="sold-winner-row">
+              <span class="sold-winner-label">WINNING BIDDER:</span>
+              <span class="sold-winner-name" id="sold-winner-name">Vikram</span>
+            </div>
+            <p class="sold-desc">The bidding floor is closed for this lot. Further bids are rejected.</p>
+            <button id="sold-reset-btn" class="action-btn-primary" style="margin-top: 1rem;">
+              Restart Auction Demo
+            </button>
+          </div>
+        </div>
+
+        <!-- Bidding Controls Form -->
+        <div class="bidding-controls-card" id="bidding-controls">
+          <div class="controls-header">
+            <span class="ctrl-title">PLACE AUTHORITATIVE BID</span>
+            <span class="next-min-hint" id="next-min-bid-hint">Minimum next bid: <strong>₹52,000</strong></span>
+          </div>
+
+          <!-- Quick Increment Buttons -->
+          <div class="quick-chips-grid">
+            <button type="button" class="chip-btn" data-increment="2000" id="chip-1">+₹2,000</button>
+            <button type="button" class="chip-btn" data-increment="5000" id="chip-2">+₹5,000</button>
+            <button type="button" class="chip-btn" data-increment="10000" id="chip-3">+₹10,000</button>
+            <button type="button" class="chip-btn" data-increment="25000" id="chip-4">+₹25,000</button>
+          </div>
+
+          <!-- Direct Amount Input & Submit -->
+          <form id="bid-form" class="bid-action-form" onsubmit="return false;">
+            <div class="input-with-symbol">
+              <span class="input-curr">₹</span>
+              <input 
+                type="number" 
+                id="bid-amount-input" 
+                class="bid-input" 
+                placeholder="Enter bid amount..." 
+                min="1" 
+                step="100" 
+                required 
+              />
+            </div>
+            <button type="submit" id="submit-bid-btn" class="submit-bid-btn">
+              <span class="btn-gavel">🔨</span>
+              <span class="btn-text">SUBMIT BID</span>
+            </button>
+          </form>
+
+          <!-- Quick feedback message container -->
+          <div id="bid-feedback-box" class="bid-feedback hidden"></div>
+        </div>
+
+      </section>
+
+      <!-- COLUMN 3: Real-Time Audit Log & Bid Feed -->
+      <section class="grid-col col-audit-feed card-glass">
+        <div class="col-header audit-header">
+          <div class="audit-title-box">
+            <span class="feed-icon">📜</span>
+            <span class="feed-title">AUDIT TRAIL</span>
+          </div>
+          <span class="feed-count-badge" id="history-count">0 BIDS</span>
+        </div>
+
+        <div class="audit-stream-container" id="audit-feed-list">
+          <div class="empty-feed-placeholder" id="empty-feed-msg">
+            <span>📡 Waiting for floor bids...</span>
+          </div>
+        </div>
+
+        <div class="anti-snipe-explanation">
+          <div class="rule-icon">🛡️</div>
+          <div class="rule-text">
+            <strong>Anti-Snipe Protection Active:</strong>
+            <p>Bids placed with &lt;15s remaining automatically reset clock to 20s to ensure fair competitive closing.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer with Tech Stack Info -->
+    <footer class="floor-footer">
+      <div class="footer-status">
+        <span class="status-dot"></span> Socket.io Authoritative Server Connected | In-Memory Engine | Multi-Room State
+      </div>
+      <div class="footer-author">
+        Developed by <strong>Pari Gothi</strong> — Assignment 15
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- User Handle Switcher Modal -->
+  <div id="user-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <h3 class="modal-title">Select Bidder Handle</h3>
+      <p class="modal-subtitle">Pick a sample bidder or enter your custom handle for live bidding tests:</p>
+      
+      <div class="preset-users-grid">
+        <button type="button" class="preset-user-btn" data-username="Vikram">👨 Vikram (Bidder A)</button>
+        <button type="button" class="preset-user-btn" data-username="Ananya">👩 Ananya (Bidder B)</button>
+        <button type="button" class="preset-user-btn" data-username="Dev">👨‍💼 Dev (Bidder C)</button>
+      </div>
+
+      <div class="custom-user-form">
+        <label for="custom-username-input">Or Enter Custom Name:</label>
+        <input type="text" id="custom-username-input" class="custom-input" placeholder="e.g. Rahul_Trader" maxlength="24">
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="save-username-btn" class="action-btn-primary">Save & Join Floor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
