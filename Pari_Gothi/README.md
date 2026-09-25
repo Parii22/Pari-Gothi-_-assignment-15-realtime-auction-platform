@@ -5,8 +5,7 @@ A high-frequency, authoritative, multi-room live auction engine built with **Nod
 ---
 
 ## 🚀 Live Demo & Deployment
-- **Live URL (Render)**: `https://live-auction-engine.onrender.com` *(Replace with your deployed Render URL)*
-- **GitHub Repository**: `itm-assignment-15-auction-socket`
+- **Live URL (Render)**:  https://pari-gothi-assignment-15-realtime.onrender.com
 
 ---
 
